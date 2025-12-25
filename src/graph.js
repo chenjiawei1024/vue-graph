@@ -7,13 +7,32 @@ class Graph {
       container: null,
       width: 800,
       height: 600,
-      parent: true, // 新增配置项，默认限制节点在父容器内
+      parent: true, // 是否开启父容器限制
+      snapline: {
+        enable: true, // 是否开启对齐线
+        className: 'snapline', // 对齐线 className
+        tolerance: 5, // 对齐线吸附距离
+        resizing: true, // 是否开启组件缩放时的对齐
+        center: true // 是否开启画布居中对齐
+      },
       ...config
     };
     
     this.registeredNodes = {};
     this.nodes = reactive([]);
     this.nodeIdCounter = 0;
+    this.snaplineData = reactive({
+      vLine: [
+        { display: false, position: '', origin: '', lineLength: '' },
+        { display: false, position: '', origin: '', lineLength: '' },
+        { display: false, position: '', origin: '', lineLength: '' }
+      ],
+      hLine: [
+        { display: false, position: '', origin: '', lineLength: '' },
+        { display: false, position: '', origin: '', lineLength: '' },
+        { display: false, position: '', origin: '', lineLength: '' }
+      ]
+    });
     
     this.init();
   }
@@ -35,45 +54,88 @@ class Graph {
     // 存储容器引用
     this.container = container;
     
+    // 如果用户没有传入自定义 className，则注入默认样式
+    if (!this.config.snapline || !this.config.snapline.className) {
+      this.addDefaultSnaplineStyles();
+    }
+    
     // 创建Vue应用实例
     const graphInstance = this;
     this.app = createApp({
       setup() {
-        // 直接使用graphInstance的响应式nodes数组
         return {
           nodes: graphInstance.nodes,
           graphInstance
         };
       },
       render() {
-        return h('div', {
-          style: {
-            position: 'relative',
-            width: '100%',
-            height: '100%'
-          }
-        }, this.nodes.map(node => {
-          const NodeComponent = this.graphInstance.registeredNodes[node.component];
-          if (!NodeComponent) return null;
+        const snaplineConfig = this.graphInstance.config.snapline;
+        const snaplineData = this.graphInstance.snaplineData;
+        
+        const children = [];
+        
+        if (snaplineConfig.enable) {
+          const className = snaplineConfig.className || 'snapline';
+          const containerWidth = this.graphInstance.config.width;
+          const containerHeight = this.graphInstance.config.height;
           
-          // 为节点组件包裹拖拽缩放能力
-          return h(MyDraggableResizable, {
+          snaplineData.vLine.forEach((line, index) => {
+            if (line.display) {
+              children.push(h('div', {
+                class: className,
+                style: {
+                  position: 'absolute',
+                  left: line.position,
+                  top: '0',
+                  width: '1px',
+                  height: `${containerHeight}px`,
+                  zIndex: 1000,
+                  pointerEvents: 'none'
+                },
+                key: `vline-${index}`
+              }));
+            }
+          });
+          
+          snaplineData.hLine.forEach((line, index) => {
+            if (line.display) {
+              children.push(h('div', {
+                class: className,
+                style: {
+                  position: 'absolute',
+                  left: '0',
+                  top: line.position,
+                  width: `${containerWidth}px`,
+                  height: '1px',
+                  zIndex: 1000,
+                  pointerEvents: 'none'
+                },
+                key: `hline-${index}`
+              }));
+            }
+          });
+        }
+        
+        this.nodes.forEach(node => {
+          const NodeComponent = this.graphInstance.registeredNodes[node.component];
+          if (!NodeComponent) return;
+
+          children.push(h(MyDraggableResizable, {
             x: node.x,
             y: node.y,
             w: node.width,
             h: node.height,
             parent: this.graphInstance.config.parent,
+            snapline: snaplineConfig,
             onDragging: (e, position) => {
-              // 拖动过程中实时更新节点位置
-              this.graphInstance.updateNode(node.id, { x: position.x, y: position.y });
+              this.graphInstance.updateNodeById(node.id, { x: position.x, y: position.y });
             },
             onDragStop: (e, position) => {
-              // 拖动结束时更新节点位置
-              this.graphInstance.updateNode(node.id, { x: position.x, y: position.y });
+              this.graphInstance.updateNodeById(node.id, { x: position.x, y: position.y });
+              this.graphInstance.clearSnaplines();
             },
             onResizing: (e, bounds) => {
-              // 缩放过程中实时更新节点位置和尺寸
-              this.graphInstance.updateNode(node.id, {
+              this.graphInstance.updateNodeById(node.id, {
                 x: bounds.x,
                 y: bounds.y,
                 width: bounds.w,
@@ -81,13 +143,18 @@ class Graph {
               });
             },
             onResizeStop: (e, bounds) => {
-              // 缩放结束时更新节点位置和尺寸
-              this.graphInstance.updateNode(node.id, {
+              this.graphInstance.updateNodeById(node.id, {
                 x: bounds.x,
                 y: bounds.y,
                 width: bounds.w,
                 height: bounds.h
               });
+              this.graphInstance.clearSnaplines();
+            },
+            onRefLineParams: (data) => {
+              if (snaplineConfig.enable) {
+                this.graphInstance.processSnaplineData(data);
+              }
             }
           }, {
             default: () => h(NodeComponent, {
@@ -95,13 +162,70 @@ class Graph {
               node: node,
               graph: this.graphInstance
             })
-          });
-        }));
+          }));
+        });
+        
+        return h('div', {
+          style: {
+            position: 'relative',
+            width: '100%',
+            height: '100%'
+          }
+        }, children);
       }
     });
     
     // 挂载应用到容器
     this.app.mount(container);
+  }
+  
+  clearSnaplines() {
+    this.snaplineData.vLine.forEach(line => {
+      line.display = false;
+      line.position = '';
+      line.origin = '';
+      line.lineLength = '';
+    });
+    this.snaplineData.hLine.forEach(line => {
+      line.display = false;
+      line.position = '';
+      line.origin = '';
+      line.lineLength = '';
+    });
+  }
+  
+  addDefaultSnaplineStyles() {
+    if (this.defaultSnaplineStylesAdded) return;
+    
+    const style = document.createElement('style');
+    const defaultClassName = 'snapline';
+    
+    style.textContent = `
+      .${defaultClassName} {
+        background-color: #5cb85c;
+      }
+    `;
+    
+    document.head.appendChild(style);
+    this.defaultSnaplineStylesAdded = true;
+  }
+  
+  processSnaplineData(data) {
+    const vLine = data.vLine || [];
+    const hLine = data.hLine || [];
+    
+    if (vLine[2] && vLine[2].display) {
+      vLine[0].display = false;
+      vLine[1].display = false;
+    }
+    
+    if (hLine[2] && hLine[2].display) {
+      hLine[0].display = false;
+      hLine[1].display = false;
+    }
+    
+    this.snaplineData.vLine = vLine;
+    this.snaplineData.hLine = hLine;
   }
   
   // 注册节点类型
@@ -158,21 +282,41 @@ class Graph {
   }
   
   // 获取节点
-  getNode(id) {
+  getNodeById(id) {
     return this.nodes.find(node => node.id === id);
   }
   
-  // 更新节点
-  updateNode(id, updates) {
-    const node = this.getNode(id);
-    if (node) {
-      // 直接修改响应式节点对象的属性
-      Object.assign(node, updates);
+  // 更新节点（差量更新：仅更新传入的属性，深度遍历）
+  updateNodeById(id, updates) {
+    const node = this.getNodeById(id);
+    if (!node) return;
+
+    function deepAssign(target, source) {
+      for (const key in source) {
+        if (source.hasOwnProperty(key)) {
+          if (
+            typeof source[key] === 'object' &&
+            source[key] !== null &&
+            !Array.isArray(source[key]) &&
+            typeof target[key] === 'object' &&
+            target[key] !== null &&
+            !Array.isArray(target[key])
+          ) {
+            // 递归深度合并
+            deepAssign(target[key], source[key]);
+          } else {
+            // 直接覆盖
+            target[key] = source[key];
+          }
+        }
+      }
     }
+
+    deepAssign(node, updates);
   }
   
   // 删除节点
-  removeNode(id) {
+  removeNodeById(id) {
     const index = this.nodes.findIndex(node => node.id === id);
     if (index !== -1) {
       // 从响应式数组中删除节点

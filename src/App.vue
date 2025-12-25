@@ -28,7 +28,13 @@ onMounted(() => {
   graph = new Graph({
     container: canvasContainer.value,
     width: 800,
-    height: 600
+    height: 600,
+    snapline: {
+      enable: true,
+      className: 'custom-snapline',
+      tolerance: 5,
+      resizing: true
+    }
   });
   
   // 注册自定义节点
@@ -137,5 +143,12 @@ h1 {
 .info-section li {
   margin-bottom: 8px;
   line-height: 1.5;
+}
+</style>
+
+<style>
+/* 自定义对齐线样式 */
+.custom-snapline {
+  background-color: #ff6b6b;
 }
 </style>

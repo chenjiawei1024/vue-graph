@@ -59,9 +59,21 @@ const decrement = () => {
 // 删除当前节点
 const deleteNode = () => {
   if (props.graph && props.node.id) {
-    props.graph.removeNode(props.node.id);
+    props.graph.removeNodeById(props.node.id);
   }
 };
+
+// 元素x值等于490时，将x值设置成500
+// watch(() => props.node.x, (newVal) => {
+//   if (newVal > 490 && newVal < 510) {
+//     console.log('x值等于490时，将x值设置成500');
+//     // 调用graph方法
+//     props.graph.updateNodeById(props.node.id, {
+//       x: 500
+//     });
+//     // props.node.x = 500;
+//   }
+// });
 </script>
 
 <style scoped>
