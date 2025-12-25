@@ -31,6 +31,7 @@ onMounted(() => {
     height: 600,
     snapline: {
       enable: true,
+      center: true,
       className: 'custom-snapline',
       tolerance: 5,
       resizing: true

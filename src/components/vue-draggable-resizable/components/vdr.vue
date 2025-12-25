@@ -845,192 +845,6 @@ export default {
         }
       }
     },
-    // 检测对齐元素
-    async snapCheck () {
-      let width = this.width
-      let height = this.height
-      if (this.snap) {
-        let activeLeft = this.left
-        let activeRight = this.left + width
-        let activeTop = this.top
-        let activeBottom = this.top + height
-
-        // 初始化辅助线数据
-        const temArr = new Array(3).fill({ display: false, position: '', origin: '', lineLength: '' })
-        const refLine = { vLine: [], hLine: [] }
-        for (let i in refLine) { refLine[i] = JSON.parse(JSON.stringify(temArr)) }
-
-        // 获取当前父节点下所有子节点
-        const nodes = this.$el.parentNode.childNodes
-
-        let tem = {
-          value: { x: [[], [], []], y: [[], [], []] },
-          display: [],
-          position: []
-        }
-        const { groupWidth, groupHeight, groupLeft, groupTop, bln } = await this.getActiveAll(nodes)
-        if (!bln) {
-          width = groupWidth
-          height = groupHeight
-          activeLeft = groupLeft
-          activeRight = groupLeft + groupWidth
-          activeTop = groupTop
-          activeBottom = groupTop + groupHeight
-        }
-        for (let item of nodes) {
-          if (item.className !== undefined && !item.className.includes(this.classNameActive) && item.getAttribute('data-is-snap') !== null && item.getAttribute('data-is-snap') !== 'false') {
-            const w = item.offsetWidth
-            const h = item.offsetHeight
-            const [l, t] = this.formatTransformVal(item.style.transform)
-            const r = l + w // 对齐目标right
-            const b = t + h // 对齐目标的bottom
-
-            const hc = Math.abs((activeTop + height / 2) - (t + h / 2)) <= this.snapline.tolerance // 水平中线
-            const vc = Math.abs((activeLeft + width / 2) - (l + w / 2)) <= this.snapline.tolerance // 垂直中线
-
-            const ts = Math.abs(t - activeBottom) <= this.snapline.tolerance // 从上到下
-            const TS = Math.abs(b - activeBottom) <= this.snapline.tolerance // 从上到下
-            const bs = Math.abs(t - activeTop) <= this.snapline.tolerance // 从下到上
-            const BS = Math.abs(b - activeTop) <= this.snapline.tolerance // 从下到上
-
-            const ls = Math.abs(l - activeRight) <= this.snapline.tolerance // 外左
-            const LS = Math.abs(r - activeRight) <= this.snapline.tolerance // 外左
-            const rs = Math.abs(l - activeLeft) <= this.snapline.tolerance // 外右
-            const RS = Math.abs(r - activeLeft) <= this.snapline.tolerance // 外右
-
-            tem['display'] = [ts, TS, bs, BS, hc, hc, ls, LS, rs, RS, vc, vc]
-            tem['position'] = [t, b, t, b, t + h / 2, t + h / 2, l, r, l, r, l + w / 2, l + w / 2]
-
-            // fix：中线自动对齐，元素可能超过父元素边界的问题
-            if (ts) {
-              if (bln) {
-                this.top = Math.max(t - height, this.bounds.minTop)
-                this.bottom = this.parentHeight - this.top - height
-              }
-              tem.value.y[0].push(l, r, activeLeft, activeRight)
-            }
-            if (bs) {
-              if (bln) {
-                this.top = t
-                this.bottom = this.parentHeight - this.top - height
-              }
-              tem.value.y[0].push(l, r, activeLeft, activeRight)
-            }
-            if (TS) {
-              if (bln) {
-                this.top = Math.max(b - height, this.bounds.minTop)
-                this.bottom = this.parentHeight - this.top - height
-              }
-              tem.value.y[1].push(l, r, activeLeft, activeRight)
-            }
-            if (BS) {
-              if (bln) {
-                this.top = b
-                this.bottom = this.parentHeight - this.top - height
-              }
-              tem.value.y[1].push(l, r, activeLeft, activeRight)
-            }
-
-            if (ls) {
-              if (bln) {
-                this.left = Math.max(l - width, this.bounds.minLeft)
-                this.right = this.parentWidth - this.left - width
-              }
-              tem.value.x[0].push(t, b, activeTop, activeBottom)
-            }
-            if (rs) {
-              if (bln) {
-                this.left = l
-                this.right = this.parentWidth - this.left - width
-              }
-              tem.value.x[0].push(t, b, activeTop, activeBottom)
-            }
-            if (LS) {
-              if (bln) {
-                this.left = Math.max(r - width, this.bounds.minLeft)
-                this.right = this.parentWidth - this.left - width
-              }
-              tem.value.x[1].push(t, b, activeTop, activeBottom)
-            }
-            if (RS) {
-              if (bln) {
-                this.left = r
-                this.right = this.parentWidth - this.left - width
-              }
-              tem.value.x[1].push(t, b, activeTop, activeBottom)
-            }
-
-            if (hc) {
-              if (bln) {
-                this.top = Math.max(t + h / 2 - height / 2, this.bounds.minTop)
-                this.bottom = this.parentHeight - this.top - height
-              }
-              tem.value.y[2].push(l, r, activeLeft, activeRight)
-            }
-            if (vc) {
-              if (bln) {
-                this.left = Math.max(l + w / 2 - width / 2, this.bounds.minLeft)
-                this.right = this.parentWidth - this.left - width
-              }
-              tem.value.x[2].push(t, b, activeTop, activeBottom)
-            }
-            // 辅助线坐标与是否显示(display)对应的数组,易于循环遍历
-            const arrTem = [0, 1, 0, 1, 2, 2, 0, 1, 0, 1, 2, 2]
-            for (let i = 0; i <= arrTem.length; i++) {
-              // 前6为Y辅助线,后6为X辅助线
-              const xory = i < 6 ? 'y' : 'x'
-              const horv = i < 6 ? 'hLine' : 'vLine'
-              if (tem.display[i]) {
-                const { origin, length } = this.calcLineValues(tem.value[xory][arrTem[i]])
-                refLine[horv][arrTem[i]].display = tem.display[i]
-                refLine[horv][arrTem[i]].position = tem.position[i] + 'px'
-                refLine[horv][arrTem[i]].origin = origin
-                refLine[horv][arrTem[i]].lineLength = length
-              }
-            }
-          }
-        }
-        this.$emit('refLineParams', refLine)
-      }
-    },
-    //对齐画布四条边
-    snapCanvas () {
-      if (this.snap) {
-        const width = this.width
-        const height = this.height
-        const parentWidth = this.parentWidth
-        const parentHeight = this.parentHeight
-
-        const activeLeft = this.left
-        const activeRight = this.left + width
-        const activeTop = this.top
-        const activeBottom = this.top + height
-
-        // 左边对齐
-        if (Math.abs(activeLeft - 0) <= this.snapline.tolerance) {
-          this.left = 0
-          this.right = parentWidth - this.left - width
-        }
-
-        // 右边对齐
-        if (Math.abs(activeRight - parentWidth) <= this.snapline.tolerance) {
-          this.left = parentWidth - width
-          this.right = parentWidth - this.left - width
-        }
-
-        // 上边对齐
-        if (Math.abs(activeTop - 0) <= this.snapline.tolerance) {
-          this.top = 0
-          this.bottom = parentHeight - this.top - height
-        }
-
-        // 下边对齐
-        if (Math.abs(activeBottom - parentHeight) <= this.snapline.tolerance) {
-          this.top = parentHeight - height
-          this.bottom = parentHeight - this.top - height
-        }
-      }
-    },
     // 处理resize时的节点吸附
     async resizeSnapNode (left, top, width, height) {
       const handle = this.handle
@@ -1083,12 +897,7 @@ export default {
           tem['position'] = [t, b, t, b, l, r, l, r]
 
           if (ts) {
-            if (handle.includes('t')) {
-              const newTop = Math.max(t - height, this.bounds.minTop)
-              const deltaTop = newTop - top
-              top = newTop
-              height += deltaTop
-            } else if (handle.includes('b')) {
+            if (handle.includes('b')) {
               const newBottom = t
               const deltaBottom = newBottom - (top + height)
               height += deltaBottom
@@ -1101,20 +910,11 @@ export default {
               const deltaTop = newTop - top
               top = newTop
               height -= deltaTop
-            } else if (handle.includes('b')) {
-              const newBottom = t
-              const deltaBottom = newBottom - (top + height)
-              height += deltaBottom
             }
             tem.value.y[0].push(l, r, activeLeftSnap, activeRightSnap)
           }
           if (TS) {
-            if (handle.includes('t')) {
-              const newTop = Math.max(b - height, this.bounds.minTop)
-              const deltaTop = newTop - top
-              top = newTop
-              height += deltaTop
-            } else if (handle.includes('b')) {
+            if (handle.includes('b')) {
               const newBottom = b
               const deltaBottom = newBottom - (top + height)
               height += deltaBottom
@@ -1127,21 +927,12 @@ export default {
               const deltaTop = newTop - top
               top = newTop
               height -= deltaTop
-            } else if (handle.includes('b')) {
-              const newBottom = b
-              const deltaBottom = newBottom - (top + height)
-              height += deltaBottom
             }
             tem.value.y[1].push(l, r, activeLeftSnap, activeRightSnap)
           }
 
           if (ls) {
-            if (handle.includes('l')) {
-              const newLeft = Math.max(l - width, this.bounds.minLeft)
-              const deltaLeft = newLeft - left
-              left = newLeft
-              width += deltaLeft
-            } else if (handle.includes('r')) {
+            if (handle.includes('r')) {
               const newRight = l
               const deltaRight = newRight - (left + width)
               width += deltaRight
@@ -1154,20 +945,11 @@ export default {
               const deltaLeft = newLeft - left
               left = newLeft
               width -= deltaLeft
-            } else if (handle.includes('r')) {
-              const newRight = l
-              const deltaRight = newRight - (left + width)
-              width += deltaRight
             }
             tem.value.x[0].push(t, b, activeTopSnap, activeBottomSnap)
           }
           if (LS) {
-            if (handle.includes('l')) {
-              const newLeft = Math.max(r - width, this.bounds.minLeft)
-              const deltaLeft = newLeft - left
-              left = newLeft
-              width += deltaLeft
-            } else if (handle.includes('r')) {
+            if (handle.includes('r')) {
               const newRight = r
               const deltaRight = newRight - (left + width)
               width += deltaRight
@@ -1180,10 +962,6 @@ export default {
               const deltaLeft = newLeft - left
               left = newLeft
               width -= deltaLeft
-            } else if (handle.includes('r')) {
-              const newRight = r
-              const deltaRight = newRight - (left + width)
-              width += deltaRight
             }
             tem.value.x[1].push(t, b, activeTopSnap, activeBottomSnap)
           }

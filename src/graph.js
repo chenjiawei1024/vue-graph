@@ -1,5 +1,6 @@
 import { createApp, defineComponent, h, ref, reactive, watch } from 'vue';
 import MyDraggableResizable from './components/MyDraggableResizable.vue';
+import Node from './Node.js';
 
 class Graph {
   constructor(config) {
@@ -261,24 +262,25 @@ class Graph {
       throw new Error(`Node type '${component}' is not registered`);
     }
     
-    // 获取节点默认配置
+    const nodeId = id || `node-${++this.nodeIdCounter}`;
+    
     const defaultConfig = this.registeredNodes[`${component}-config`] || {};
     
-    // 创建响应式节点实例
-    const node = reactive({
-      id: id || `node-${++this.nodeIdCounter}`,
+    const nodeInstance = new Node({
+      id: nodeId,
       component,
-      x: x !== undefined ? x : defaultConfig.x,
-      y: y !== undefined ? y : defaultConfig.y,
-      width: width || defaultConfig.width,
-      height: height || defaultConfig.height,
-      data: data || {}
-    });
+      x,
+      y,
+      width,
+      height,
+      data
+    }, defaultConfig);
     
-    // 添加到响应式节点列表
-    this.nodes.push(node);
+    const reactiveNode = reactive(nodeInstance);
     
-    return node;
+    this.nodes.push(reactiveNode);
+    
+    return reactiveNode;
   }
   
   // 获取节点
