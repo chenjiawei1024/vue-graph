@@ -1,6 +1,18 @@
 <template>
   <div class="app-container">
-    <h1>Vue 3 Graph Demo</h1>
+    <h1>画布demo</h1>
+    
+    <!-- 背景控制按钮 -->
+    <div class="control-section">
+      <h2>背景控制</h2>
+      <div class="button-group">
+        <button @click="setBackgroundColor">设置颜色背景</button>
+        <button @click="setImageBackground">设置图片背景</button>
+        <button @click="setPatternBackground">设置图案背景</button>
+        <button @click="clearBackground">清除背景</button>
+      </div>
+    </div>
+    
     <div class="demo-section">
       <div class="canvas-container" ref="canvasContainer"></div>
     </div>
@@ -10,6 +22,7 @@
         <li>拖拽节点可以移动位置</li>
         <li>拖动节点边缘的控制点可以缩放节点</li>
         <li>点击节点内的 +/- 按钮可以调整计数器数值</li>
+        <li>使用上方按钮可以控制画布背景</li>
       </ul>
     </div>
   </div>
@@ -23,6 +36,38 @@ import Count from './components/Count.vue';
 const canvasContainer = ref(null);
 let graph = null;
 
+// 背景控制方法
+const setBackgroundColor = () => {
+  graph.drawBackground({
+    color: '#e6f7ff',
+    opacity: 0.8
+  });
+};
+
+const setImageBackground = () => {
+  // 使用在线图片作为示例
+  graph.drawBackground({
+    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop&crop=entropy&cs=tinysrgb',
+    repeat: 'no-repeat',
+    position: { x: 50, y: 50 },
+    size: { width: 300, height: 200 },
+    opacity: 0.9
+  });
+};
+
+const setPatternBackground = () => {
+  graph.drawBackground({
+    color: '#fff8dc',
+    image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNiIgaGVpZ2h0PSI2IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0wIDBoNiB2NiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwMDAwIiBzdHJva2Utd2lkdGg9IjAuNSIvPjxwYXRoIGQ9Ik0wIDBoMyB2MyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwMDAwIiBzdHJva2Utd2lkdGg9IjAuNSIvPjwvc3ZnPg==',
+    repeat: 'repeat',
+    opacity: 0.9
+  });
+};
+
+const clearBackground = () => {
+  graph.clearBackground();
+};
+
 onMounted(() => {
   // 初始化画布
   graph = new Graph({
@@ -35,6 +80,10 @@ onMounted(() => {
       className: 'custom-snapline',
       tolerance: 5,
       resizing: true
+    },
+    background: {
+      color: '#f0f8ff',
+      opacity: 0.9
     }
   });
   
@@ -144,6 +193,44 @@ h1 {
 .info-section li {
   margin-bottom: 8px;
   line-height: 1.5;
+}
+
+.control-section {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.control-section h2 {
+  margin-bottom: 15px;
+  color: #42b983;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.button-group button {
+  padding: 10px 15px;
+  background-color: #42b983;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.button-group button:hover {
+  background-color: #3aa373;
+}
+
+.button-group button:active {
+  transform: translateY(1px);
 }
 </style>
 

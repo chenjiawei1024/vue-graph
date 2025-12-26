@@ -16,6 +16,15 @@ class Graph {
         resizing: true, // 是否开启组件缩放时的对齐
         center: true // 是否开启画布居中对齐
       },
+      background: {
+        color: undefined,
+        image: undefined,
+        position: undefined,
+        size: undefined,
+        repeat: undefined,
+        opacity: 1,
+        angle: 0
+      },
       ...config
     };
     
@@ -48,9 +57,7 @@ class Graph {
     container.style.position = 'relative';
     container.style.width = `${this.config.width}px`;
     container.style.height = `${this.config.height}px`;
-    container.style.border = '1px solid #ccc';
     container.style.overflow = 'hidden';
-    container.style.backgroundColor = '#fafafa';
     
     // 存储容器引用
     this.container = container;
@@ -80,6 +87,7 @@ class Graph {
           const containerWidth = this.graphInstance.config.width;
           const containerHeight = this.graphInstance.config.height;
           
+          // 绘制垂直对齐线
           snaplineData.vLine.forEach((line, index) => {
             if (line.display) {
               children.push(h('div', {
@@ -98,6 +106,7 @@ class Graph {
             }
           });
           
+          // 绘制水平对齐线
           snaplineData.hLine.forEach((line, index) => {
             if (line.display) {
               children.push(h('div', {
@@ -178,6 +187,11 @@ class Graph {
     
     // 挂载应用到容器
     this.app.mount(container);
+    
+    // 初始化背景
+    if (this.config.background) {
+      this.drawBackground(this.config.background);
+    }
   }
   
   clearSnaplines() {
@@ -211,6 +225,84 @@ class Graph {
     this.defaultSnaplineStylesAdded = true;
   }
   
+  /**
+   * 设置背景
+   * @param {Object} options - 背景配置选项
+   */
+  drawBackground(options) {
+    // 更新背景配置
+    this.config.background = {
+      ...this.config.background,
+      ...options
+    };
+
+    // 应用背景样式到容器
+    if (this.container) {
+      const { background } = this.config;
+      const styles = {
+        backgroundColor: background.color || 'transparent',
+        backgroundImage: background.image ? `url(${background.image})` : 'none',
+        opacity: background.opacity
+      };
+
+      // 设置背景位置
+      if (background.position) {
+        if (typeof background.position === 'object') {
+          styles.backgroundPosition = `${background.position.x}px ${background.position.y}px`;
+        } else {
+          styles.backgroundPosition = background.position;
+        }
+      }
+
+      // 设置背景大小
+      if (background.size) {
+        if (typeof background.size === 'object') {
+          styles.backgroundSize = `${background.size.width}px ${background.size.height}px`;
+        } else {
+          styles.backgroundSize = background.size;
+        }
+      }
+
+      // 设置背景重复
+      if (background.repeat) {
+        styles.backgroundRepeat = background.repeat;
+      }
+
+      // 应用所有样式
+      Object.assign(this.container.style, styles);
+    }
+  }
+
+  /**
+   * 清除背景
+   */
+  clearBackground() {
+    // 重置背景配置
+    this.config.background = {
+      color: undefined,
+      image: undefined,
+      position: undefined,
+      size: undefined,
+      repeat: undefined,
+      opacity: 1,
+      angle: 0
+    };
+
+    // 清除容器背景样式
+    if (this.container) {
+      const styles = {
+        backgroundColor: 'transparent',
+        backgroundImage: 'none',
+        backgroundPosition: '0 0',
+        backgroundSize: 'auto',
+        backgroundRepeat: 'repeat',
+        opacity: 1
+      };
+
+      Object.assign(this.container.style, styles);
+    }
+  }
+
   processSnaplineData(data) {
     const vLine = data.vLine || [];
     const hLine = data.hLine || [];
