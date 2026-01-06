@@ -30,7 +30,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import Graph from './graph.js';
+import Graph from './graph';
 import Count from './components/Count.vue';
 
 const canvasContainer = ref(null);
@@ -85,6 +85,64 @@ onMounted(() => {
       color: '#f0f8ff',
       opacity: 0.9
     }
+  });
+  
+  // 测试Graph事件系统
+  console.log('=== 测试Graph事件系统 ===');
+  
+  // 监听初始化完成事件
+  graph.on('initialized', (event) => {
+    console.log('Graph initialized:', event);
+  });
+  
+  // 监听节点添加事件
+  graph.on('node:add', (event) => {
+    console.log('Node added:', event.node.id, 'at index', event.index);
+  });
+  
+  // 监听节点添加前事件
+  graph.on('node:beforeadd', (event) => {
+    console.log('Node before add:', event.node.id, event.options);
+  });
+  
+  // 监听节点更新事件
+  graph.on('node:update', (event) => {
+    console.log('node:update触发')
+  });
+  
+  // 监听节点更新前事件
+  graph.on('node:beforeupdate', (event) => {
+    console.log('Node before update:', event.node.id, event.updates);
+  });
+  
+  // 监听节点删除事件
+  graph.on('node:remove', (event) => {
+    console.log('Node removed:', event.node.id, 'from index', event.index);
+  });
+  
+  // 监听节点删除前事件
+  graph.on('node:beforeremove', (event) => {
+    console.log('Node before remove:', event.node.id);
+  });
+  
+  // 监听通用cell事件
+  graph.on('cell:add', (event) => {
+    console.log('Cell added:', event.cell.id);
+  });
+  
+  // 监听命名空间事件
+  graph.on('node:add.test', (event) => {
+    console.log('Node added (test namespace):', event.node.id);
+  });
+  
+  // 监听一次事件
+  graph.once('node:add.once', (event) => {
+    console.log('Node added (once):', event.node.id);
+  });
+  
+  // 监听画布销毁事件
+  graph.on('destroy', (event) => {
+    console.log('Graph destroyed:', event);
   });
   
   // 注册自定义节点
